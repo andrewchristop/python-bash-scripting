@@ -1,0 +1,83 @@
+
+#!/bin/bash
+#Christopher Budiharto
+#Purpose: This script backs up directories and files 
+#Last Revision Date: 12/08/2023 
+
+PARAM1=$1 #First positional argument
+
+
+errmsg(){ #errmsg() function to print error message in case wrong file is specified
+  echo "USAGE: ./backup [/path/to/backup.conf]"
+}
+
+createbackupstring(){ #createbackupstring() function to name the backup archive pursuant to the host name, date, and time format
+  BACKUPSTR="$(hostname)".$1."$(date +%Y-%m-%d)"."$(date +%H:%M)"
+}
+
+writetolog(){ #writetolog() function to write logs to a file
+  echo "$(date +%Y-%m-%d)"."$(date +%H:%M)" #Prints current date and time 
+  echo $'\n'
+  echo "Backup of "$(echo $HOMED | grep -v '^#' | grep home | cut -d: -f2)"" #Backup string
+  ls -al $(echo $HOMED | grep -v '^#' | grep home | cut -d: -f2) #Listing of all the backed up files
+  echo $'\n'
+  echo "Backup of $(echo $CONFIG | grep -v '^#' | grep config | cut -d: -f2)" #Backup string
+  ls -al $(echo $CONFIG | grep -v '^#' | grep config | cut -d: -f2) #Listing of all the backed up files
+  echo $'\n'
+}
+
+if [[ "$(basename "$PARAM1")" == 'backup.conf' && -e $PARAM1 ]] #if-statement checks if positional parameter is a valid config file
+then
+
+  echo $'\nLoading current configuration of backup.conf'
+  #series of variables storing formatted output of the backup config
+  COMPRESSION=$(cat "$PARAM1" | grep -v '^#' | grep 'COMPRESSION' | cut -d= -f2) #Excludes '#' and '=' around output
+  E_MAIL=$(cat "$PARAM1" | grep -v '^#' | grep 'E_MAIL' | cut -d= -f2) #Excludes '#' and '=' around output
+  BACKUP_TARGET=$(cat "$PARAM1" | grep -v '^#' | grep 'BACKUP_TARGET' | cut -d= -f2) #Excludes '#' and '=' around output
+  TARGET_TYPE=$(cat "$PARAM1" | grep -v '^#' | grep 'TARGET_TYPE' |  cut -d= -f2) #Excludes '#' and '=' around output
+  TARGET_SERVER=$(cat "$PARAM1" | grep -v '^#' | grep 'TARGET_SERVER' | cut -d= -f2) #Excludes '#' and '=' around output
+  TARGET_FS=$(cat "$PARAM1" | grep -v '^#' | grep 'TARGET_FS' | cut -d= -f2) #Excludes '#' and '=' around output
+  USER=$(cat "$PARAM1" | grep -v '^#' | grep 'USER' | cut -d= -f2) #Excludes '#' and '=' around output
+  PASSWORD=$(cat "$PARAM1" | grep -v '^#' | grep 'PASSWORD' | cut -d= -f2) #Excludes '#' and '=' around output
+  HOMED=$(cat "$PARAM1" | grep -v '^#' | grep 'home:') #Excludes '#' and '=' around output
+  CONFIG=$(cat "$PARAM1" | grep -v '^#' | grep 'config:') #Excludes '#' and '=' around output
+
+  echo "COMPRESSION=$COMPRESSION" #Echoes the output stored in the COMPRESSION variable concatenated with fixed string
+  echo "E_MAIL=$E_MAIL" #Echoes the output stored in the E_MAIL variable concatenated with fixed string
+  echo "BACKUP_TARGET=$BACKUP_TARGET" #Echoes the output stored in the BACKUP_TARGET variable concatenated with fixed string
+  echo "TARGET_TYPE=$TARGET_TYPE" #Echoes the output stored in the TARGET_TYPE variable concatenated with fixed string
+  echo "TARGET_SERVER=$TARGET_SERVER" #Echoes the output stored in the TARGET_SERVER variable concatenated with fixed string
+  echo "TARGET_FS=$TARGET_FS" #Echoes the output stored in the TARGET_FS variable concatenated with fixed string
+  echo "USER=$USER" #Echoes the output stored in the USER variable concatenated with fixed string
+  echo "PASSWORD=$PASSWORD" #Echoes the output stored in the PASSWORD variable concatenated with fixed string
+  echo "$HOMED" #Echoes the output stored in the HOMED variable associated with the backup line 
+  echo "$CONFIG" #Echoes the output stored in the CONFIG variable associated with the backup line 
+
+  if [[ ! -d /backup  ]] #Checks if backup directory exists
+  then
+    mkdir /backup #Creates backup directory if it hasn't already existed
+    mkdir /backup/$(echo $HOMED | grep home | cut -d: -f1) #Creates subdirectory of the backed up files
+    mkdir /backup/$(echo $CONFIG | grep -v '^#' | grep config | cut -d: -f1) #Creates subdirectory of the backed up files
+  fi
+
+ createbackupstring $(echo $HOMED | grep -v '^#' | grep home | cut -d: -f1) #Generates backup string by calling createbackupstring() 
+ tar -czf /backup/$(echo $HOMED | grep home | cut -d: -f1)/$BACKUPSTR.tar.gz $(echo $HOMED | grep -v '^#' | grep home | cut -d: -f2) #Creates backup archive and named as the the backup string
+ createbackupstring $(echo $CONFIG | grep -v '^#' | grep config | cut -d: -f1) #Generates backup string by calling createbackupstring() 
+ tar -czf /backup/$(echo $CONFIG | grep config | cut -d: -f1)/$BACKUPSTR.tar.gz $(echo $CONFIG | grep -v '^#' | grep config | cut -d: -f2) #Creates backup archive and named it as the backup string 
+
+ if [[ ! -d /var/log/backup  ]] #Checks if backup subdirectory in /var/log
+ then 
+  mkdir /var/log/backup #Creates backup subdirectory if it doesn't already exist
+  writetolog > /var/log/backup/log.txt #Calls writetolog() and redirects the output to a newly created log.txt file in the log subdirectory
+ else
+  writetolog >> /var/log/backup/log.txt #Calls writetolog() but appends the output to a log.txt file in the log subdirectory
+ fi
+
+
+else
+  errmsg #errmsg() function call to print error message if positional parameter is missing or erroneous
+fi
+
+#Successful escape code
+exit 0
+

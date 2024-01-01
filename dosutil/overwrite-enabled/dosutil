@@ -1,0 +1,288 @@
+#!/bin/bash
+#Christopher Budiharto
+#Purpose: This script enables DOS users to execute DOS commands to conduct basic UNIX operations
+#Last Revision Date: 8 November 2023
+
+#first name and last name variables
+LASTNAME=Budiharto
+FIRSTNAME=Christopher
+
+#read arguments
+ARG1=$1 #positional parameter no. 1
+ARG2=$2 #positional parameter no. 2
+ARG3=$3 #positional parameter no. 3
+
+
+#Function declaration prevents reuse of code. Use of %> serves to suppress standard error and standard output
+auth(){ #auth() function declaration; Function to be called when author's name is to be printed out
+
+   echo $LASTNAME","$FIRSTNAME #echoes or outputs the name following the lastname,firstname format
+}
+
+typ(){ #typ() function declaration; Function to be called when a file is to be read
+
+   cat $ARG2 #File to be read is the script's second positional parameter
+}
+
+cpy(){ #cpy() function declaration; Function to be called when a file is to be copied 
+
+   if [[ $ARG1 == "copy!"  ]]
+   then
+     cp -rf $ARG2 $ARG3 &> /dev/null #File/directory overwrite protection override with the '!' specifier
+   else
+     cp -r $ARG2 $ARG3 &> /dev/null #Copies the file/directory from one destination to the other
+   fi
+}
+
+#Use of functions becomes useful here as renaming and moving files/directories rely on the same command
+mvren(){ #mvren() function declaration; Function to be called when a file is to be moved or renamed
+
+   if [[ $ARG1 == "move!" || $ARG1 == "ren!" ]]
+   then
+     mv -f $ARG2 $ARG3 &> /dev/null #Moves or renames files and directories for commands with the '!' specifier
+   else
+     mv $ARG2 $ARG3 &> /dev/null #Moves or renames the files
+   fi
+}
+
+del(){ #del() function declaration; Function is to be called when a file is to be deleted
+
+   rm -f $ARG2 &> /dev/null #Use of -f flag guarantees that user won't be prompted to confirm delete action. 
+}
+
+helppg(){ #helppg() function declaration; Function is to be called when user needs help running this script
+   echo "--HELP PAGE--"
+   echo "'./dosutil author' to display the author's name "
+   echo "'./dosutil type /path/to/file' to read the contents of a file "
+   echo "'./dosutil copy /path/to/file /destination/path' to copy a file"
+   echo "'./dosutil copy! /path/to/file /destination/path' to copy a file and overwrite existing file/directory"
+   echo "'./dosutil move /path/to/file /destination/path' to move a file"
+   echo "'./dosutil move! /path/to/file /destination/path' to move a file and overwrite existing file/directory"
+   echo "'./dosutil ren /path/to/oldfilename /path/to/newfilename' to rename a file"
+   echo "'./dosutil ren! /path/to/oldfilename /path/to/newfilename' to rename files and directories"
+   echo "'./dosutil del /path/to/file' to delete a file"
+}
+
+errmsg(){ #errormsg() function declaration; Function is to be called when user enters unrecognized parameter(s)
+   echo "USAGE: ./dosutil [parameter]" #Instructional on how to use the script in case of an unrecognized parameter
+   echo "'./dosutil help' for more options"
+}
+
+suggest(){ #suggest() function declaration; Function is to be called when user enters wrong parameter(s)
+   if [[ $ARG1 == "move" || $ARG1 == "move!" ]]
+   then
+     helppg | grep move #helppg() function call piped to output filtration for the 'move' parameter
+   elif [[ $ARG1 == "copy" || $ARG1 == "copy!" ]]
+   then
+     helppg | grep copy #helppg() function call piped to output filtration for the 'copy' parameter
+   elif [[ $ARG1 == "ren" || $ARG1 == "ren!" ]]
+   then
+     helppg | grep rename #helppg() function call piped to output filtration for the 'ren' parameter
+   else
+     helppg | grep delete #helppg() function call piped to output filtration for the 'del' parameter
+   fi
+}
+
+unixequiv(){ #unixequiv() function declaration; Function is to be called the DOS commands being converted
+   if [[ $ARG1 == "move" || $ARG1 == "ren" ]]
+   then
+     echo "UNIX command ran: mv $ARG2 $ARG3" #Shows what UNIX commands are run for the 'move' or 'ren' parameter
+   elif [[ $ARG1 == "copy" ]]
+   then
+     echo "UNIX command ran: cp -r $ARG2 $ARG3" #Shows what UNIX commands are run for the 'copy' parameter
+   elif [[ $ARG1 == "copy!" ]]
+   then
+     echo "UNIX command ran: cp -rf $ARG2 $ARG3" #Shows what UNIX commands are run for the 'copy!' parameter
+   elif [[ $ARG1 == "ren!" || $ARG1 == "move!" ]]
+   then
+     echo "UNIX command ran: mv -f $ARG2 $ARG3" #Shows what UNIX commands are run for the 'move!'or 'ren!' parameter
+   else
+     echo "UNIX command ran: rm -f $ARG2" #Shows what UNIX commands are run for the 'del' parameter
+   fi
+}
+
+vrfy(){ #vrfy() function declaration; Function is to be called to check if file listed as parameters exist
+   if [[ $ARG1 == "move" || $ARG1 == "copy" || $ARG1 == "ren" || $ARG1 == "ren!" || $ARG1 == "copy!" || $ARG1 == "move!" ]]
+   then
+     if [[ ! -e $ARG2 || ( ( $ARG1 != "ren" && $ARG1 != "ren!" ) && ! -e $ARG3 ) ]]
+     then
+       echo "One of the file parameters do not exist" #Error message being printed out
+       suggest #Suggests what commands users can execute
+       return 0 #Return value of 0 to print error
+     else
+       file $ARG2 #Shows the type of file 
+       unixequiv #Shows what UNIX commands the DOS params are converted to
+       return 1 #Return value of 1 to indicate success
+     fi
+   else
+     if [[ ! -e $ARG2 ]] 
+     then
+       echo "File to be deleted does not exist" #To be printed if file to be deleted does not exist
+       suggest #Suggests what command the user can execute
+       return 0 #Return value of 0 to indicate success
+     else
+       file $ARG2 #Shows the type of file
+       unixequiv #Shows what UNIX commands the DOS params are converted to
+       return 1 #Return value of 1 to indicate success
+     fi
+   fi
+}
+
+chkstatus(){ #chkstatus() function declaration; Function to be called to check if command exited successfully
+  if [[ $? == 0  ]]
+  then
+    echo "Command exited successfully" #Prints success message if exit code is 0
+  else
+    echo "Command exited with problems" #Prints success message if exit code is 1
+  fi
+}
+
+overwrite(){ #overwrite() function declaration; Function to be called to check if user is about to overwrite a file
+
+  if [[ -d $ARG3 ]] #Treats arguments as directories
+  then
+    if [[ -e "$ARG3/$(basename $ARG2)" ]] #basename strips directory and suffix from filenames
+    then
+      echo "You are about to overwrite a file/directory" #Warning message
+      echo "Quitting..." 
+      echo "Command exited with problems"
+      exit 1 #Exit code of 1 exits script with problems
+    fi
+  fi
+}
+
+chkren(){ #chkren() function declaration; Function to be called to check if renamed object is a directory 
+  if [[ -d $ARG2  ]]
+  then
+    echo "Object to be renamed is a directory"
+    helppg | grep ren!
+    echo "Quitting..."
+    echo "Command exited with problems"
+    exit 1 #Script exits if user tries to rename a directory
+  fi
+}
+
+#Case-block conditional contingent upon running the program with one or multiple positional parameters
+case "$ARG1" in
+       author) #Positional parameter to be executed
+         auth #auth() function call
+         ;;
+       
+       type) #Positional parameter to be executed
+         typ #typ() function call
+         ;;
+
+       copy) #Positional parameter to be executed
+         vrfy #vrfy() to check if file exists
+
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           overwrite #Checks if user is about to overwrite a file
+           cpy #cpy() function call
+           chkstatus #Prints exit status
+         else
+           chkstatus #Prints exit status
+         fi
+         ;;
+       
+       
+        copy!)
+          vrfy #vrfy() to check if file exists
+          
+          stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           cpy #cpy() function call
+           chkstatus #Prints exit status
+         else
+           chkstatus #Prints exit status
+         fi
+         ;;
+
+       move) #Positional parameter to be executed
+         vrfy #vrfy() to check if file exists
+         
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           overwrite #Checks if user is about to overwrite a file
+           mvren #mvren() function call
+           chkstatus #Prints exit status
+         else
+           chkstatus #Prints exit status
+         fi
+         ;;
+
+
+       move!)
+         vrfy #vrfy() to check if file exists
+
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           mvren #mvren() function call
+           chkstatus #local variable to check exit status of last executed command
+         else
+           chkstatus #local variable to check exit status of last executed command
+         fi
+         ;;
+
+
+       ren) #Positional parameter to be executed
+         vrfy #vrfy() to check if file exists
+         
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           chkren #Check if the object to be renamed is a directory
+           mvren #mvren() function call
+           chkstatus #local variable to check exit status of last executed command
+         else
+           chkstatus #local variable to check exit status of last executed command
+         fi
+         ;;
+       
+       ren!) #Positional parameter to be executed
+         vrfy #vrfy() to check if file exists
+         
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           mvren #mvren() function call
+           chkstatus #local variable to check exit status of last executed command
+         else
+           chkstatus #local variable to check exit status of last executed command
+         fi
+         ;;
+
+       del) #Positional parameter to be executed
+         vrfy #vrfy() to check if file exists
+         
+         stat=$? #local variable to check exit status of last executed command
+
+         if [[ $stat == 1 ]] #Value of 1 indicates command success
+         then
+           del #del() function call
+           chkstatus #local variable to check exit status of last executed command
+         else
+           chkstatus #local variable to check exit status of last executed command
+         fi
+         ;;
+       
+       help) #Positional parameter to be executed
+         helppg #helppg() function call
+         ;;
+       *) #This block executes if parameters are left blank or unrecognized
+         errmsg #errmsg() function call
+         ;;
+esac
+
+#successful escape code
+exit 0
