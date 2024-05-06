@@ -1,4 +1,4 @@
-# My BASH scripts 
+# My scripts 
 
 A dump of all the scripts I've written for the BASH shell. Enjoy
 
