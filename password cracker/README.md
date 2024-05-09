@@ -1,4 +1,4 @@
-# Pokemon x Random Number SHA1 decryptor
+# Pokemon x Random Number SHA-1 cracker
 
 Script that cracks SHA-1 hash comprising of a pokemon and a random number
 
