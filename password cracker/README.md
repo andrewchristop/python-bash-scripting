@@ -14,3 +14,6 @@ Hashing and file read function coded with the assistance of ChatGPT
 
 
 PS: I believe there is a flag in hashcat that lets you do the same exact thing but I wasn't thinking straight at the time and I wasn't as familiar with hashcat as I was with JohnTheRipper
+
+
+Also, you can't technically "decrypt" a hash as hashes are one-way functions. A hash is considered cracked when it matches the hash of a certain plaintext
